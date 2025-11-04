@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Lock, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SignupPage() {
+export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,16 +22,23 @@ export default function SignupPage() {
     setLoading(true)
     setError(null)
 
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      setLoading(false)
+      return
+    }
+
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+      const { error } = await supabase.auth.updateUser({
+        password: password,
       })
 
       if (error) {
@@ -37,33 +46,14 @@ export default function SignupPage() {
         return
       }
 
-      if (data.user) {
-        setSuccess(true)
-      }
+      setSuccess(true)
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (err) {
       setError('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGoogleSignup = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        setError(error.message)
-      }
-    } catch (err) {
-      setError('Failed to sign up with Google')
     } finally {
       setLoading(false)
     }
@@ -85,26 +75,14 @@ export default function SignupPage() {
             </div>
             
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Check your email!
+              Password reset successful!
             </h2>
             
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              We've sent a confirmation link to <strong className="text-gray-900 dark:text-white">{email}</strong>. 
-              Click the link in the email to activate your account.
+              Your password has been successfully reset. Redirecting you to login...
             </p>
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Tip:</strong> Check your spam folder if you don't see the email within a few minutes.
-              </p>
-            </div>
-
-            <Link 
-              href="/login" 
-              className="inline-block w-full py-3 px-4 gradient-primary text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-            >
-              Go to Login
-            </Link>
+            <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
           </div>
         </div>
 
@@ -150,14 +128,14 @@ export default function SignupPage() {
           
           <div className="inline-flex items-center space-x-2 glass-gradient px-4 py-2 rounded-full mb-4">
             <Sparkles className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Start Your Journey</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Reset Password</span>
           </div>
           
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Create your account
+            Create new password
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Join thousands of users already using GradientSaaS
+            Enter your new password below
           </p>
         </div>
 
@@ -173,85 +151,11 @@ export default function SignupPage() {
             </div>
           )}
 
-          <div className="mb-6">
-            <button
-              onClick={handleGoogleSignup}
-              disabled={loading}
-              className="w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 hover:shadow-lg group bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              <span className="font-semibold text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                {loading ? 'Loading...' : 'Continue with Google'}
-              </span>
-            </button>
-          </div>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
-                Or continue with email
-              </span>
-            </div>
-          </div>
-
           <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Full Name
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
-                </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={loading}
-                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="John Doe"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="you@example.com"
-                />
-              </div>
-            </div>
-
+            {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Password
+                New Password
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -282,38 +186,72 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Confirm New Password
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                  className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                  disabled={loading}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
+                  )}
+                </button>
+              </div>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Must be at least 6 characters long
               </p>
             </div>
 
-            <div className="flex items-start">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer mt-1"
-                disabled={loading}
-              />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                I agree to the{' '}
-                <a href="#" className="text-purple-600 hover:text-purple-500 font-medium">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-purple-600 hover:text-purple-500 font-medium">
-                  Privacy Policy
-                </a>
-              </label>
-            </div>
+            {/* Password Strength Indicator */}
+            {password.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs">
+                  <div className={`w-2 h-2 rounded-full ${password.length >= 6 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <span className={password.length >= 6 ? 'text-green-600' : 'text-gray-500'}>
+                    At least 6 characters
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  <div className={`w-2 h-2 rounded-full ${password === confirmPassword && password.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <span className={password === confirmPassword && password.length > 0 ? 'text-green-600' : 'text-gray-500'}>
+                    Passwords match
+                  </span>
+                </div>
+              </div>
+            )}
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
               className="w-full py-4 px-4 gradient-primary text-white rounded-xl font-semibold text-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-200 flex items-center justify-center space-x-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              <span>{loading ? 'Creating account...' : 'Create Account'}</span>
+              <span>{loading ? 'Resetting password...' : 'Reset Password'}</span>
               {!loading && (
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -324,19 +262,11 @@ export default function SignupPage() {
         </div>
 
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-          Already have an account?{' '}
+          Remember your password?{' '}
           <Link href="/login" className="font-semibold text-purple-600 hover:text-purple-500 transition-colors">
             Sign in
           </Link>
         </p>
-
-        <div className="flex items-center justify-center space-x-4 mt-6 text-xs text-gray-500 dark:text-gray-400">
-          <a href="#" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Privacy Policy</a>
-          <span>•</span>
-          <a href="#" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Terms of Service</a>
-          <span>•</span>
-          <a href="#" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Help</a>
-        </div>
       </div>
 
       <style jsx>{`
