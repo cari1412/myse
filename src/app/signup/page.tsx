@@ -2,31 +2,56 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Mail, Lock, Eye, EyeOff, User, Sparkles, AlertCircle, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SignupPage() {
+export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long')
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: formData.email,
+        password: formData.password,
         options: {
           data: {
-            full_name: name,
+            full_name: formData.fullName,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -38,16 +63,25 @@ export default function SignupPage() {
       }
 
       if (data.user) {
+        // Проверяем, нужно ли подтверждение email
+        if (data.user.identities && data.user.identities.length === 0) {
+          setError('This email is already registered. Please sign in.')
+          return
+        }
+
         setSuccess(true)
+        // Опционально: если email confirmation отключено, редирект сразу
+        // setTimeout(() => router.push('/dashboard'), 2000)
       }
     } catch (err) {
       setError('An unexpected error occurred')
+      console.error('Signup error:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleSignUp = async () => {
     setLoading(true)
     setError(null)
 
@@ -69,6 +103,7 @@ export default function SignupPage() {
     }
   }
 
+  // Success state
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -89,8 +124,8 @@ export default function SignupPage() {
             </h2>
             
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              We've sent a confirmation link to <strong className="text-gray-900 dark:text-white">{email}</strong>. 
-              Click the link in the email to activate your account.
+              We've sent a confirmation link to <strong className="text-gray-900 dark:text-white">{formData.email}</strong>. 
+              Click the link to verify your email and complete your registration.
             </p>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
@@ -101,9 +136,9 @@ export default function SignupPage() {
 
             <Link 
               href="/login" 
-              className="inline-block w-full py-3 px-4 gradient-primary text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              className="inline-flex items-center justify-center space-x-2 w-full py-3 px-4 gradient-primary text-white rounded-xl font-semibold hover:shadow-lg transition-all"
             >
-              Go to Login
+              <span>Go to Login</span>
             </Link>
           </div>
         </div>
@@ -130,6 +165,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gray-50 dark:bg-gray-900">
+      {/* Animated Background Gradients */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
@@ -137,6 +173,7 @@ export default function SignupPage() {
       </div>
       
       <div className="max-w-md w-full relative z-10">
+        {/* Header with Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center space-x-3 mb-6 group">
             <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
@@ -157,11 +194,13 @@ export default function SignupPage() {
             Create your account
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Join thousands of users already using GradientSaaS
+            Join thousands of users already using our platform
           </p>
         </div>
 
+        {/* Sign Up Card */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 border border-gray-200 dark:border-gray-700 backdrop-blur-xl">
+          {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
@@ -173,9 +212,10 @@ export default function SignupPage() {
             </div>
           )}
 
+          {/* Social Sign Up */}
           <div className="mb-6">
             <button
-              onClick={handleGoogleSignup}
+              onClick={handleGoogleSignUp}
               disabled={loading}
               className="w-full flex items-center justify-center space-x-3 px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 hover:shadow-lg group bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -191,6 +231,7 @@ export default function SignupPage() {
             </button>
           </div>
 
+          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
@@ -202,9 +243,11 @@ export default function SignupPage() {
             </div>
           </div>
 
+          {/* Sign Up Form */}
           <form className="space-y-5" onSubmit={handleSubmit}>
+            {/* Full Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Full Name
               </label>
               <div className="relative group">
@@ -212,13 +255,13 @@ export default function SignupPage() {
                   <User className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
                 </div>
                 <input
-                  id="name"
-                  name="name"
+                  id="fullName"
+                  name="fullName"
                   type="text"
                   autoComplete="name"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={formData.fullName}
+                  onChange={handleChange}
                   disabled={loading}
                   className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="John Doe"
@@ -226,6 +269,7 @@ export default function SignupPage() {
               </div>
             </div>
 
+            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
@@ -240,8 +284,8 @@ export default function SignupPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={handleChange}
                   disabled={loading}
                   className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="you@example.com"
@@ -249,6 +293,7 @@ export default function SignupPage() {
               </div>
             </div>
 
+            {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Password
@@ -263,8 +308,8 @@ export default function SignupPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={handleChange}
                   disabled={loading}
                   className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="••••••••"
@@ -283,31 +328,57 @@ export default function SignupPage() {
                 </button>
               </div>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Must be at least 6 characters long
+                Must be at least 8 characters
               </p>
             </div>
 
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            {/* Terms and Conditions */}
             <div className="flex items-start">
               <input
                 id="terms"
                 name="terms"
                 type="checkbox"
                 required
-                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer mt-1"
+                className="h-4 w-4 mt-1 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
                 disabled={loading}
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                 I agree to the{' '}
-                <a href="#" className="text-purple-600 hover:text-purple-500 font-medium">
+                <a href="#" className="font-medium text-purple-600 hover:text-purple-500">
                   Terms of Service
                 </a>{' '}
                 and{' '}
-                <a href="#" className="text-purple-600 hover:text-purple-500 font-medium">
+                <a href="#" className="font-medium text-purple-600 hover:text-purple-500">
                   Privacy Policy
                 </a>
               </label>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -323,6 +394,7 @@ export default function SignupPage() {
           </form>
         </div>
 
+        {/* Login Link */}
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
           Already have an account?{' '}
           <Link href="/login" className="font-semibold text-purple-600 hover:text-purple-500 transition-colors">
@@ -330,6 +402,7 @@ export default function SignupPage() {
           </Link>
         </p>
 
+        {/* Footer Links */}
         <div className="flex items-center justify-center space-x-4 mt-6 text-xs text-gray-500 dark:text-gray-400">
           <a href="#" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Privacy Policy</a>
           <span>•</span>
