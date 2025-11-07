@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 export const runtime = 'edge'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:streamGenerateContent'
 
 export async function POST(req: Request) {
   try {
@@ -63,8 +62,10 @@ export async function POST(req: Request) {
       parts: [{ text: msg.content }]
     })) || []
 
-    // Вызываем Gemini API
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}&alt=sse`, {
+    // Вызываем Gemini API со streaming
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`
+    
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,20 +87,23 @@ export async function POST(req: Request) {
       return new Response('Failed to get response from AI', { status: 500 })
     }
 
-    // Создаем поток для стриминга ответа
+    // Создаем поток для стриминга ответа клиенту
     const encoder = new TextEncoder()
-    const decoder = new TextDecoder()
     let fullText = ''
 
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+        
         if (!reader) {
           controller.close()
           return
         }
 
         try {
+          let buffer = ''
+          
           while (true) {
             const { done, value } = await reader.read()
             
@@ -118,25 +122,39 @@ export async function POST(req: Request) {
               break
             }
 
-            // Парсим SSE события
-            const chunk = decoder.decode(value)
-            const lines = chunk.split('\n')
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            
+            // Оставляем последнюю неполную строку в буфере
+            buffer = lines.pop() || ''
             
             for (const line of lines) {
               if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim()
+                
+                if (!jsonStr || jsonStr === '[DONE]') continue
+                
                 try {
-                  const jsonStr = line.slice(6)
-                  if (jsonStr.trim() === '[DONE]') continue
-                  
                   const data = JSON.parse(jsonStr)
-                  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
                   
-                  if (text) {
-                    fullText += text
-                    controller.enqueue(encoder.encode(text))
+                  // Извлекаем текст из ответа Gemini
+                  const candidates = data.candidates || []
+                  
+                  for (const candidate of candidates) {
+                    const content = candidate.content
+                    if (!content) continue
+                    
+                    const parts = content.parts || []
+                    for (const part of parts) {
+                      if (part.text) {
+                        fullText += part.text
+                        // Отправляем чанк клиенту
+                        controller.enqueue(encoder.encode(part.text))
+                      }
+                    }
                   }
-                } catch (e) {
-                  // Игнорируем ошибки парсинга
+                } catch (parseError) {
+                  console.error('Parse error:', parseError, 'Line:', jsonStr)
                 }
               }
             }
@@ -151,7 +169,8 @@ export async function POST(req: Request) {
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     })
   } catch (error) {
