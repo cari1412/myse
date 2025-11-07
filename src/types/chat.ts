@@ -26,13 +26,17 @@ export interface SendMessageRequest {
   content: string
 }
 
-export interface OpenRouterMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
+export interface GeminiMessage {
+  role: 'user' | 'model'
+  parts: Array<{ text: string }>
 }
 
-export interface OpenRouterRequest {
-  model: string
-  messages: OpenRouterMessage[]
-  stream: boolean
+export interface GeminiRequest {
+  contents: GeminiMessage[]
+  generationConfig?: {
+    temperature?: number
+    topK?: number
+    topP?: number
+    maxOutputTokens?: number
+  }
 }
