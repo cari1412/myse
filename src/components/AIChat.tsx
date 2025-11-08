@@ -301,10 +301,10 @@ export default function AIChat({ user }: AIChatProps) {
   }
 
   return (
-    <div className="flex h-full bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar с чатами */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Sidebar со списком чатов - ФИКСИРОВАННЫЙ */}
+      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={createNewChat}
             className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
@@ -314,6 +314,7 @@ export default function AIChat({ user }: AIChatProps) {
           </button>
         </div>
 
+        {/* Список чатов - ПРОКРУЧИВАЕМЫЙ */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {chats.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
@@ -350,8 +351,8 @@ export default function AIChat({ user }: AIChatProps) {
         </div>
       </div>
 
-      {/* Область чата */}
-      <div className="flex-1 flex flex-col">
+      {/* Область чата - ПРОКРУЧИВАЕМАЯ */}
+      <div className="flex-1 flex flex-col min-w-0">
         {!currentChatId ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -374,7 +375,7 @@ export default function AIChat({ user }: AIChatProps) {
           </div>
         ) : (
           <>
-            {/* Сообщения */}
+            {/* Сообщения - ПРОКРУЧИВАЕМАЯ ОБЛАСТЬ */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-12">
@@ -442,8 +443,8 @@ export default function AIChat({ user }: AIChatProps) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Форма ввода */}
-            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            {/* Форма ввода - ФИКСИРОВАННАЯ ВНИЗУ */}
+            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex-shrink-0">
               <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
                 {/* Превью прикрепленных изображений */}
                 {attachedImages.length > 0 && (
