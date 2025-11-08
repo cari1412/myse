@@ -5,7 +5,16 @@ export interface Message {
   chat_id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  images?: ImageAttachment[]
   created_at: string
+}
+
+export interface ImageAttachment {
+  id: string
+  url: string
+  mimeType: string
+  name: string
+  size: number
 }
 
 export interface Chat {
@@ -24,11 +33,20 @@ export interface CreateChatRequest {
 export interface SendMessageRequest {
   chatId: string
   content: string
+  images?: ImageAttachment[]
+}
+
+export interface GeminiPart {
+  text?: string
+  inlineData?: {
+    mimeType: string
+    data: string // base64
+  }
 }
 
 export interface GeminiMessage {
   role: 'user' | 'model'
-  parts: Array<{ text: string }>
+  parts: GeminiPart[]
 }
 
 export interface GeminiRequest {

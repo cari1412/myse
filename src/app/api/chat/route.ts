@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    const { chatId, content } = await req.json()
+    const { chatId, content, images } = await req.json()
 
     if (!chatId || !content) {
       return new Response('ChatId and content are required', { status: 400 })
@@ -33,13 +33,14 @@ export async function POST(req: Request) {
       return new Response('Chat not found', { status: 404 })
     }
 
-    // Сохраняем сообщение пользователя
+    // Сохраняем сообщение пользователя с изображениями
     await supabase
       .from('messages')
       .insert({
         chat_id: chatId,
         role: 'user',
-        content
+        content,
+        images: images || null
       })
 
     // Получаем историю сообщений
@@ -56,11 +57,34 @@ export async function POST(req: Request) {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', chatId)
 
-    // Форматируем сообщения для Gemini API
-    const geminiMessages = messages?.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    })) || []
+    // Форматируем сообщения для Gemini API с поддержкой изображений
+    const geminiMessages = messages?.map(msg => {
+      const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = []
+      
+      // Добавляем текст
+      if (msg.content) {
+        parts.push({ text: msg.content })
+      }
+      
+      // Добавляем изображения
+      if (msg.images && Array.isArray(msg.images)) {
+        for (const image of msg.images) {
+          if (image.data && image.mimeType) {
+            parts.push({
+              inlineData: {
+                mimeType: image.mimeType,
+                data: image.data
+              }
+            })
+          }
+        }
+      }
+      
+      return {
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts
+      }
+    }) || []
 
     // Вызываем Gemini API со streaming
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`
