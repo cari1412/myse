@@ -13,5 +13,9 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  return <DashboardClient user={user} />
+  return (
+    <div className="h-screen overflow-hidden">
+      <DashboardClient user={user} />
+    </div>
+  )
 }

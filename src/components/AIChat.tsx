@@ -301,9 +301,11 @@ export default function AIChat({ user }: AIChatProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    // КРИТИЧНО: НЕТ h-screen! Используем h-full чтобы заполнить родительский контейнер
+    <div className="flex h-full bg-gray-50 dark:bg-gray-900">
       {/* Sidebar со списком чатов - ФИКСИРОВАННЫЙ */}
       <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
+        {/* Кнопка New Chat - ФИКСИРОВАННАЯ ВВЕРХУ */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={createNewChat}
@@ -314,7 +316,7 @@ export default function AIChat({ user }: AIChatProps) {
           </button>
         </div>
 
-        {/* Список чатов - ПРОКРУЧИВАЕМЫЙ */}
+        {/* Список чатов - ПРОКРУЧИВАЕМЫЙ (только эта область) */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {chats.length === 0 ? (
             <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
@@ -375,7 +377,7 @@ export default function AIChat({ user }: AIChatProps) {
           </div>
         ) : (
           <>
-            {/* Сообщения - ПРОКРУЧИВАЕМАЯ ОБЛАСТЬ */}
+            {/* Сообщения - ПРОКРУЧИВАЕМАЯ ОБЛАСТЬ (только здесь скролл) */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-12">

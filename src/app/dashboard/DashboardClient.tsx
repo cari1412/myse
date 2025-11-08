@@ -15,7 +15,7 @@ interface DashboardClientProps {
 export default function DashboardClient({ user }: DashboardClientProps) {
   const router = useRouter()
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat'>('chat')
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -24,9 +24,9 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+    <div className="h-full bg-gray-50 dark:bg-gray-900 flex flex-col">
+      {/* Header - ФИКСИРОВАННЫЙ */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -63,11 +63,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+      {/* Main layout - РАСТЯГИВАЕТСЯ */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Sidebar - ФИКСИРОВАННЫЙ С НЕЗАВИСИМЫМ СКРОЛЛОМ */}
         <aside className="hidden md:flex md:flex-shrink-0">
           <div className="flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+            {/* Навигация - ПРОКРУЧИВАЕТСЯ */}
+            <div className="flex-1 overflow-y-auto pt-5 pb-4">
               <nav className="mt-5 flex-1 px-3 space-y-1">
                 <button
                   onClick={() => setActiveTab('dashboard')}
@@ -119,6 +121,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               </nav>
             </div>
             
+            {/* Sign Out - ВСЕГДА ВНИЗУ, ФИКСИРОВАННЫЙ */}
             <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
               <button
                 onClick={handleSignOut}
@@ -131,8 +134,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-hidden">
+        {/* Main Content - ЗАПОЛНЯЕТ ОСТАВШЕЕСЯ ПРОСТРАНСТВО */}
+        <main className="flex-1 overflow-hidden min-w-0">
           {activeTab === 'chat' ? (
             <AIChat user={user} />
           ) : (
@@ -149,7 +152,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 gap-6 mb-8 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
@@ -251,8 +254,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40">
+      {/* Mobile Bottom Nav - ФИКСИРОВАННЫЙ ВНИЗУ */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 flex-shrink-0">
         <div className="grid grid-cols-5 gap-1 p-2">
           <button 
             onClick={() => setActiveTab('dashboard')}
