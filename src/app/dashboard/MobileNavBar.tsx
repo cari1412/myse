@@ -1,16 +1,15 @@
 'use client'
 
-import { Home, MessageSquare, Settings, User } from 'lucide-react'
-import { usePathname } from 'next/navigation'
+import { Home, MessageSquare, Settings, User, LogOut } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 interface MobileNavBarProps {
   activeTab: string
   onTabChange: (tab: string) => void
+  onSignOut?: () => void
 }
 
-export default function MobileNavBar({ activeTab, onTabChange }: MobileNavBarProps) {
-  const pathname = usePathname()
+export default function MobileNavBar({ activeTab, onTabChange, onSignOut }: MobileNavBarProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -22,6 +21,7 @@ export default function MobileNavBar({ activeTab, onTabChange }: MobileNavBarPro
     { id: 'chats', icon: MessageSquare, label: 'Chats' },
     { id: 'settings', icon: Settings, label: 'Settings' },
     { id: 'profile', icon: User, label: 'Profile' },
+    { id: 'logout', icon: LogOut, label: 'Logout', action: onSignOut },
   ]
 
   if (!mounted) return null
@@ -33,66 +33,72 @@ export default function MobileNavBar({ activeTab, onTabChange }: MobileNavBarPro
       
       {/* Liquid Glass Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        {/* Gradient Background Glow */}
+        {/* Ambient Glow */}
         <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 via-transparent to-transparent pointer-events-none" 
              style={{ height: '120px', bottom: '0' }} />
         
         {/* Main Navigation Container */}
         <div className="relative mx-4 mb-6">
           {/* Liquid Glass Effect */}
-          <div className="liquid-glass-nav rounded-[28px] px-4 py-2.5 shadow-2xl">
+          <div className="liquid-glass-nav rounded-[28px] px-2 py-2.5 shadow-2xl">
             {/* Navigation Items */}
             <div className="flex items-center justify-around relative">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id
                 const Icon = item.icon
+                const isLogout = item.id === 'logout'
                 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => onTabChange(item.id)}
-                    className="relative flex flex-col items-center justify-center py-2 px-4 group transition-all duration-300"
+                    onClick={() => {
+                      if (item.action) {
+                        item.action()
+                      } else {
+                        onTabChange(item.id)
+                      }
+                    }}
+                    className="relative flex flex-col items-center justify-center py-2 px-2 group transition-all duration-300"
                   >
                     {/* Active Indicator Background */}
-                    {isActive && (
+                    {isActive && !isLogout && (
                       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500/30 to-pink-500/30 blur-xl transition-all duration-500" />
                     )}
                     
                     {/* Icon Container with Glass Effect */}
                     <div className={`
-                      relative z-10 flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300
-                      ${isActive 
+                      relative z-10 flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300
+                      ${isActive && !isLogout
                         ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/50 scale-110' 
+                        : isLogout
+                        ? 'bg-gradient-to-br from-red-500 to-red-600 hover:shadow-lg hover:shadow-red-500/50 hover:scale-105 active:scale-95'
                         : 'bg-white/10 group-hover:bg-white/20 group-active:scale-95'
                       }
                     `}>
                       <Icon 
                         className={`w-5 h-5 transition-all duration-300 ${
-                          isActive 
+                          isActive && !isLogout
                             ? 'text-white' 
+                            : isLogout
+                            ? 'text-white'
                             : 'text-gray-400 group-hover:text-gray-300'
                         }`}
-                        strokeWidth={isActive ? 2.5 : 2}
+                        strokeWidth={isActive || isLogout ? 2.5 : 2}
                       />
                     </div>
                     
                     {/* Label */}
                     <span className={`
                       relative z-10 mt-1 text-[10px] font-medium transition-all duration-300
-                      ${isActive 
+                      ${isActive && !isLogout
                         ? 'text-white font-semibold' 
+                        : isLogout
+                        ? 'text-red-400 font-medium'
                         : 'text-gray-400 group-hover:text-gray-300'
                       }
                     `}>
                       {item.label}
                     </span>
-                    
-                    {/* Ripple Effect on Click */}
-                    <div className="absolute inset-0 rounded-2xl overflow-hidden">
-                      <div className={`
-                        absolute inset-0 bg-white/20 transition-transform duration-300 scale-0 group-active:scale-100
-                      `} />
-                    </div>
                   </button>
                 )
               })}

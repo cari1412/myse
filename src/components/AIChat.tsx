@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2, Bot, User as UserIcon, Sparkles, Plus, Trash2, MessageSquare, Camera, Image as ImageIcon, X } from 'lucide-react'
+import { Send, Loader2, Bot, User as UserIcon, Sparkles, Plus, Trash2, MessageSquare, Camera, Image as ImageIcon, X, Menu } from 'lucide-react'
 import { User } from '@supabase/supabase-js'
 
 interface ImageAttachment {
@@ -39,6 +39,7 @@ export default function AIChat({ user }: AIChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingChats, setIsLoadingChats] = useState(true)
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false) // Для мобильного overlay
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -111,6 +112,7 @@ export default function AIChat({ user }: AIChatProps) {
         setCurrentChatId(data.chat.id)
         setMessages([])
         setAttachedImages([])
+        setIsMobileSidebarOpen(false) // Закрываем sidebar после создания
       }
     } catch (error) {
       console.error('Error creating chat:', error)
@@ -147,13 +149,11 @@ export default function AIChat({ user }: AIChatProps) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       
-      // Проверка типа файла
       if (!file.type.startsWith('image/')) {
         alert(`File ${file.name} is not an image`)
         continue
       }
 
-      // Проверка размера (макс 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert(`File ${file.name} is too large. Maximum size is 5MB`)
         continue
@@ -178,7 +178,6 @@ export default function AIChat({ user }: AIChatProps) {
 
     setAttachedImages(prev => [...prev, ...newImages])
     
-    // Сброс input
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
@@ -189,7 +188,6 @@ export default function AIChat({ user }: AIChatProps) {
       reader.readAsDataURL(file)
       reader.onload = () => {
         const result = reader.result as string
-        // Убираем префикс data:image/xxx;base64,
         const base64 = result.split(',')[1]
         resolve(base64)
       }
@@ -200,7 +198,6 @@ export default function AIChat({ user }: AIChatProps) {
   const removeImage = (imageId: string) => {
     setAttachedImages(prev => {
       const updated = prev.filter(img => img.id !== imageId)
-      // Освобождаем URL объект
       const img = prev.find(i => i.id === imageId)
       if (img?.url.startsWith('blob:')) {
         URL.revokeObjectURL(img.url)
@@ -211,152 +208,201 @@ export default function AIChat({ user }: AIChatProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if ((!input.trim() && attachedImages.length === 0) || isLoading || !currentChatId) return
-    
-    const userMessage = input.trim()
-    const imagesToSend = [...attachedImages]
-    
+    if (!currentChatId || (!input.trim() && attachedImages.length === 0) || isLoading) return
+
+    const userMessage: Message = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: input,
+      images: attachedImages
+    }
+
+    setMessages(prev => [...prev, userMessage])
     setInput('')
     setAttachedImages([])
     setIsLoading(true)
 
-    // Добавляем сообщение пользователя сразу в UI
-    const tempUserMsg: Message = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      images: imagesToSend
-    }
-    setMessages(prev => [...prev, tempUserMsg])
-
-    // Создаем временное сообщение ассистента для streaming
-    const tempAssistantMsg: Message = {
-      id: `temp-assistant-${Date.now()}`,
-      role: 'assistant',
-      content: ''
-    }
-    setMessages(prev => [...prev, tempAssistantMsg])
-
     try {
-      const response = await fetch('/api/chat', {
+      const requestBody = {
+        message: input,
+        images: attachedImages.map(img => ({
+          data: img.data,
+          mimeType: img.mimeType
+        }))
+      }
+
+      const response = await fetch(`/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chatId: currentChatId,
-          content: userMessage || 'Analyze this image',
-          images: imagesToSend
+          ...requestBody
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to send message')
-      }
+      const data = await response.json()
 
-      // Читаем streaming ответ
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let accumulatedText = ''
+      if (data.response) {
+        const assistantMessage: Message = {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: data.response
+        }
+        setMessages(prev => [...prev, assistantMessage])
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          
-          if (done) break
-          
-          const chunk = decoder.decode(value)
-          accumulatedText += chunk
-          
-          // Обновляем последнее сообщение (ассистента)
-          setMessages(prev => {
-            const newMessages = [...prev]
-            newMessages[newMessages.length - 1] = {
-              ...tempAssistantMsg,
-              content: accumulatedText
-            }
-            return newMessages
-          })
+        if (messages.length === 0 && data.title) {
+          setChats(prevChats =>
+            prevChats.map(chat =>
+              chat.id === currentChatId ? { ...chat, title: data.title } : chat
+            )
+          )
         }
       }
-
-      // После завершения перезагружаем чаты и сообщения
-      await loadChats()
-      await loadMessages(currentChatId)
-      
     } catch (error) {
       console.error('Error sending message:', error)
-      // Убираем временные сообщения при ошибке
-      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')))
+      alert('Failed to send message. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (isLoadingChats) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-      </div>
-    )
+  const selectChat = (chatId: string) => {
+    setCurrentChatId(chatId)
+    setIsMobileSidebarOpen(false) // Закрываем sidebar при выборе чата
   }
 
   return (
-    // КРИТИЧНО: НЕТ h-screen! Используем h-full чтобы заполнить родительский контейнер
     <div className="flex h-full bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar со списком чатов - ФИКСИРОВАННЫЙ */}
-      <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
-        {/* Кнопка New Chat - ФИКСИРОВАННАЯ ВВЕРХУ */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <button
-            onClick={createNewChat}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            <span>New Chat</span>
-          </button>
-        </div>
+      {/* Desktop Sidebar - показывается только на desktop */}
+      <div className="hidden md:flex md:flex-shrink-0">
+        <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <button
+              onClick={createNewChat}
+              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:opacity-90 transition-opacity font-medium flex items-center justify-center space-x-2"
+            >
+              <Plus className="w-5 h-5" />
+              <span>New Chat</span>
+            </button>
+          </div>
 
-        {/* Список чатов - ПРОКРУЧИВАЕМЫЙ (только эта область) */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {chats.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
-              <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No chats yet</p>
-              <p className="text-xs mt-1">Create one to start!</p>
-            </div>
-          ) : (
-            chats.map(chat => (
-              <div
-                key={chat.id}
-                onClick={() => setCurrentChatId(chat.id)}
-                className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                  currentChatId === chat.id
-                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{chat.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(chat.updated_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => deleteChat(chat.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
-                >
-                  <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                </button>
+          <div className="flex-1 overflow-y-auto p-4">
+            {isLoadingChats ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
               </div>
-            ))
-          )}
+            ) : chats.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">
+                No chats yet. Create one to start!
+              </p>
+            ) : (
+              chats.map(chat => (
+                <div
+                  key={chat.id}
+                  onClick={() => setCurrentChatId(chat.id)}
+                  className={`group flex items-center space-x-3 p-3 rounded-xl mb-2 cursor-pointer transition-all ${
+                    currentChatId === chat.id
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{chat.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(chat.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => deleteChat(chat.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Mobile Overlay Sidebar */}
+      {isMobileSidebarOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          
+          {/* Sidebar Panel */}
+          <div className="relative w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl flex flex-col animate-slide-in">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+
+            {/* New Chat Button */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <button
+                onClick={createNewChat}
+                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:opacity-90 transition-opacity font-medium flex items-center justify-center space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>New Chat</span>
+              </button>
+            </div>
+
+            {/* Chat List */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {isLoadingChats ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                </div>
+              ) : chats.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">
+                  No chats yet. Create one to start!
+                </p>
+              ) : (
+                chats.map(chat => (
+                  <div
+                    key={chat.id}
+                    onClick={() => selectChat(chat.id)}
+                    className={`group flex items-center space-x-3 p-3 rounded-xl mb-2 cursor-pointer transition-all ${
+                      currentChatId === chat.id
+                        ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{chat.title}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(chat.updated_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => deleteChat(chat.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Область чата - ПРОКРУЧИВАЕМАЯ */}
       <div className="flex-1 flex flex-col min-w-0">
         {!currentChatId ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="w-10 h-10 text-white" />
@@ -377,8 +423,27 @@ export default function AIChat({ user }: AIChatProps) {
           </div>
         ) : (
           <>
+            {/* Mobile Header with Menu Button */}
+            <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+              </button>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                {chats.find(c => c.id === currentChatId)?.title || 'Chat'}
+              </h1>
+              <button
+                onClick={createNewChat}
+                className="p-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
             {/* Сообщения - ПРОКРУЧИВАЕМАЯ ОБЛАСТЬ (только здесь скролл) */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-12">
                   <Bot className="w-16 h-16 mx-auto mb-4 text-purple-600 dark:text-purple-400" />
@@ -446,7 +511,7 @@ export default function AIChat({ user }: AIChatProps) {
             </div>
 
             {/* Форма ввода - ФИКСИРОВАННАЯ ВНИЗУ */}
-            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex-shrink-0">
+            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4 flex-shrink-0">
               <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
                 {/* Превью прикрепленных изображений */}
                 {attachedImages.length > 0 && (
@@ -515,7 +580,7 @@ export default function AIChat({ user }: AIChatProps) {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message or attach images..."
+                    placeholder="Type your message..."
                     disabled={isLoading}
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                   />
@@ -538,6 +603,20 @@ export default function AIChat({ user }: AIChatProps) {
           </>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(-100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }

@@ -344,10 +344,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </main>
       </div>
 
-      {/* Liquid Glass Mobile Navigation - заменяет старую навигацию */}
+      {/* Liquid Glass Mobile Navigation с Sign Out */}
       <MobileNavBar 
         activeTab={getMobileTab()} 
         onTabChange={handleMobileTabChange}
+        onSignOut={handleSignOut}
       />
     </div>
   )
