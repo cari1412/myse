@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut, User as UserIcon, Settings, BarChart, FolderOpen, Bell, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import AIChat from '@/components/AIChat'
+import MobileNavBar from './MobileNavBar'
 
 interface DashboardClientProps {
   user: User
@@ -15,12 +16,32 @@ interface DashboardClientProps {
 export default function DashboardClient({ user }: DashboardClientProps) {
   const router = useRouter()
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat'>('chat')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'projects' | 'profile' | 'settings'>('chat')
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()
+  }
+
+  // Обработчик для мобильной навигации
+  const handleMobileTabChange = (tab: string) => {
+    if (tab === 'home') {
+      setActiveTab('dashboard')
+    } else if (tab === 'chats') {
+      setActiveTab('chat')
+    } else if (tab === 'settings') {
+      setActiveTab('settings')
+    } else if (tab === 'profile') {
+      setActiveTab('profile')
+    }
+  }
+
+  // Конвертируем activeTab в формат для MobileNavBar
+  const getMobileTab = () => {
+    if (activeTab === 'dashboard') return 'home'
+    if (activeTab === 'chat') return 'chats'
+    return activeTab
   }
 
   return (
@@ -95,29 +116,41 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                   AI Chat
                 </button>
                 
-                <a
-                  href="#"
-                  className="group flex items-center px-3 py-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                <button
+                  onClick={() => setActiveTab('projects')}
+                  className={`group flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === 'projects'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
                 >
                   <FolderOpen className="mr-3 h-5 w-5" />
                   Projects
-                </a>
+                </button>
                 
-                <a
-                  href="#"
-                  className="group flex items-center px-3 py-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                <button
+                  onClick={() => setActiveTab('profile')}
+                  className={`group flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === 'profile'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
                 >
                   <UserIcon className="mr-3 h-5 w-5" />
                   Profile
-                </a>
+                </button>
                 
-                <a
-                  href="#"
-                  className="group flex items-center px-3 py-3 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`group flex items-center w-full px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === 'settings'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
                 >
                   <Settings className="mr-3 h-5 w-5" />
                   Settings
-                </a>
+                </button>
               </nav>
             </div>
             
@@ -138,13 +171,70 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         <main className="flex-1 overflow-hidden min-w-0">
           {activeTab === 'chat' ? (
             <AIChat user={user} />
+          ) : activeTab === 'settings' ? (
+            <div className="h-full overflow-y-auto p-6 lg:p-8">
+              <div className="max-w-3xl mx-auto">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Appearance</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 dark:text-gray-300">Theme</span>
+                        <span className="text-sm text-gray-500">Auto</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700 dark:text-gray-300">Language</span>
+                        <span className="text-sm text-gray-500">English</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notifications</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700 dark:text-gray-300">Push Notifications</span>
+                      <span className="text-sm text-gray-500">Enabled</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeTab === 'profile' ? (
+            <div className="h-full overflow-y-auto p-6 lg:p-8">
+              <div className="max-w-3xl mx-auto">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Profile</h1>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-6 mb-6">
+                    <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-3xl">
+                        {user.user_metadata?.full_name?.[0] || user.email?.[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {user.user_metadata?.full_name || 'User'}
+                      </h2>
+                      <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-gray-500 dark:text-gray-400">Member Since</label>
+                      <p className="text-gray-800 dark:text-white font-medium">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="h-full overflow-y-auto p-6 lg:p-8">
               <div className="max-w-7xl mx-auto">
                 {/* Welcome Section */}
                 <div className="mb-8">
                   <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                    Welcome back, {user.user_metadata?.full_name?.split(' ')[0] || 'there'}! 👋
+                    Welcome back, {user.user_metadata?.full_name || 'User'}! 👋
                   </h1>
                   <p className="text-gray-600 dark:text-gray-400">
                     Here's what's happening with your projects today.
@@ -152,7 +242,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
                   <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
@@ -254,48 +344,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </main>
       </div>
 
-      {/* Mobile Bottom Nav - ФИКСИРОВАННЫЙ ВНИЗУ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 flex-shrink-0">
-        <div className="grid grid-cols-5 gap-1 p-2">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center justify-center p-3 rounded-lg transition-colors ${
-              activeTab === 'dashboard'
-                ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <BarChart className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Home</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('chat')}
-            className={`flex flex-col items-center justify-center p-3 rounded-lg transition-colors ${
-              activeTab === 'chat'
-                ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Chat</span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-            <FolderOpen className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Projects</span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-            <UserIcon className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Profile</span>
-          </button>
-          <button
-            onClick={handleSignOut}
-            className="flex flex-col items-center justify-center p-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            <LogOut className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Logout</span>
-          </button>
-        </div>
-      </nav>
+      {/* Liquid Glass Mobile Navigation - заменяет старую навигацию */}
+      <MobileNavBar 
+        activeTab={getMobileTab()} 
+        onTabChange={handleMobileTabChange}
+      />
     </div>
   )
 }
