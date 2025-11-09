@@ -39,22 +39,19 @@ export default function AIChat({ user }: AIChatProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingChats, setIsLoadingChats] = useState(true)
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([])
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false) // Для мобильного overlay
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  // Автоскролл к последнему сообщению
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Загрузка чатов при монтировании
   useEffect(() => {
     loadChats()
   }, [])
 
-  // Загрузка сообщений при смене чата
   useEffect(() => {
     if (currentChatId) {
       loadMessages(currentChatId)
@@ -112,7 +109,7 @@ export default function AIChat({ user }: AIChatProps) {
         setCurrentChatId(data.chat.id)
         setMessages([])
         setAttachedImages([])
-        setIsMobileSidebarOpen(false) // Закрываем sidebar после создания
+        setIsMobileSidebarOpen(false)
       }
     } catch (error) {
       console.error('Error creating chat:', error)
@@ -268,12 +265,12 @@ export default function AIChat({ user }: AIChatProps) {
 
   const selectChat = (chatId: string) => {
     setCurrentChatId(chatId)
-    setIsMobileSidebarOpen(false) // Закрываем sidebar при выборе чата
+    setIsMobileSidebarOpen(false)
   }
 
   return (
     <div className="flex h-full bg-gray-50 dark:bg-gray-900">
-      {/* Desktop Sidebar - показывается только на desktop */}
+      {/* Desktop Sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
         <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -328,15 +325,12 @@ export default function AIChat({ user }: AIChatProps) {
       {/* Mobile Overlay Sidebar */}
       {isMobileSidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsMobileSidebarOpen(false)}
           />
           
-          {/* Sidebar Panel */}
           <div className="relative w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl flex flex-col animate-slide-in">
-            {/* Header */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
               <button
@@ -347,7 +341,6 @@ export default function AIChat({ user }: AIChatProps) {
               </button>
             </div>
 
-            {/* New Chat Button */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <button
                 onClick={createNewChat}
@@ -358,7 +351,6 @@ export default function AIChat({ user }: AIChatProps) {
               </button>
             </div>
 
-            {/* Chat List */}
             <div className="flex-1 overflow-y-auto p-4">
               {isLoadingChats ? (
                 <div className="flex justify-center py-8">
@@ -399,7 +391,7 @@ export default function AIChat({ user }: AIChatProps) {
         </div>
       )}
 
-      {/* Область чата - ПРОКРУЧИВАЕМАЯ */}
+      {/* Область чата */}
       <div className="flex-1 flex flex-col min-w-0">
         {!currentChatId ? (
           <div className="flex-1 flex items-center justify-center p-4">
@@ -423,7 +415,7 @@ export default function AIChat({ user }: AIChatProps) {
           </div>
         ) : (
           <>
-            {/* Mobile Header with Menu Button */}
+            {/* Mobile Header */}
             <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -442,7 +434,7 @@ export default function AIChat({ user }: AIChatProps) {
               </button>
             </div>
 
-            {/* Сообщения - ПРОКРУЧИВАЕМАЯ ОБЛАСТЬ (только здесь скролл) */}
+            {/* Сообщения */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
               {messages.length === 0 && !isLoading && (
                 <div className="text-center py-12">
@@ -474,7 +466,6 @@ export default function AIChat({ user }: AIChatProps) {
                       )}
                     </div>
                     <div className="flex-1">
-                      {/* Изображения */}
                       {message.images && message.images.length > 0 && (
                         <div className={`mb-2 flex flex-wrap gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {message.images.map(img => (
@@ -489,7 +480,6 @@ export default function AIChat({ user }: AIChatProps) {
                         </div>
                       )}
                       
-                      {/* Текст сообщения */}
                       {message.content && (
                         <div className={`px-4 py-3 rounded-2xl ${
                           message.role === 'user'
@@ -510,10 +500,9 @@ export default function AIChat({ user }: AIChatProps) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Форма ввода - ФИКСИРОВАННАЯ ВНИЗУ */}
-            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4 flex-shrink-0">
+            {/* Форма ввода - с padding для мобильной навигации */}
+            <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 md:p-4 pb-24 md:pb-4 flex-shrink-0">
               <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-                {/* Превью прикрепленных изображений */}
                 {attachedImages.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {attachedImages.map(img => (
@@ -536,7 +525,6 @@ export default function AIChat({ user }: AIChatProps) {
                 )}
 
                 <div className="flex space-x-2">
-                  {/* Кнопка камеры */}
                   <input
                     ref={cameraInputRef}
                     type="file"
@@ -556,7 +544,6 @@ export default function AIChat({ user }: AIChatProps) {
                     <Camera className="w-5 h-5" />
                   </button>
 
-                  {/* Кнопка галереи */}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -575,7 +562,6 @@ export default function AIChat({ user }: AIChatProps) {
                     <ImageIcon className="w-5 h-5" />
                   </button>
 
-                  {/* Поле ввода */}
                   <input
                     type="text"
                     value={input}
@@ -585,7 +571,6 @@ export default function AIChat({ user }: AIChatProps) {
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                   />
 
-                  {/* Кнопка отправки */}
                   <button
                     type="submit"
                     disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
