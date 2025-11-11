@@ -2,17 +2,10 @@
 
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { faqData } from '@/lib/faq-data'
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0)
-
-  const faqs = [
-    { question: 'What is GradientSaaS?', answer: 'GradientSaaS is a modern SaaS platform designed to help businesses scale faster.' },
-    { question: 'How does the free trial work?', answer: 'Our 14-day free trial gives you full access. No credit card required.' },
-    { question: 'Can I change my plan later?', answer: 'Yes! You can upgrade or downgrade at any time.' },
-    { question: 'What payment methods do you accept?', answer: 'We accept all major credit cards and PayPal.' },
-    { question: 'Is my data secure?', answer: 'Security is our top priority. We use bank-level encryption.' },
-  ]
 
   return (
     <section id="faq" className="py-20 bg-white dark:bg-gray-900">
@@ -24,7 +17,7 @@ export default function FAQ() {
         </div>
 
         <div className="space-y-4">
-          {faqs.map((faq, i) => (
+          {faqData.map((faq, i) => (
             <div key={i} className="glass-gradient rounded-xl border border-gray-200 overflow-hidden">
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}

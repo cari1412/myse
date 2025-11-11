@@ -6,39 +6,36 @@ import Pricing from '@/components/Pricing'
 import FAQ from '@/components/FAQ'
 import Footer from '@/components/Footer'
 import StructuredData from '@/components/StructuredData'
+import { generateHomePageSchemas, generateFAQPageSchema } from '@/lib/schema'
+import { faqData } from '@/lib/faq-data'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Home',
 }
 
-export default function Home() {
-  // Schema.org data for SEO and LLM
-  const organizationSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'GradientSaaS',
-    url: 'https://gradientsaas.com',
-    logo: 'https://gradientsaas.com/logo.png',
-    description: 'Modern SaaS platform with beautiful gradients',
-  }
+export default async function Home() {
+  const supabase = await createClient()
 
-  const softwareSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'GradientSaaS Platform',
-    applicationCategory: 'BusinessApplication',
-    offers: {
-      '@type': 'AggregateOffer',
-      lowPrice: '29',
-      highPrice: '199',
-      priceCurrency: 'USD',
-    },
-  }
+  // Загружаем планы из Supabase для генерации Schema.org разметки
+  const { data: plans } = await supabase
+    .from('pricing_plans')
+    .select('*')
+    .eq('is_active', true)
+    .order('price', { ascending: true })
+
+  // Генерируем все схемы для главной страницы
+  // Включает: Organization, WebSite, WebPage, SoftwareApplication, и все Product схемы
+  const schemas = generateHomePageSchemas(plans || [])
+  
+  // Добавляем FAQ схему
+  const faqSchema = generateFAQPageSchema(faqData)
 
   return (
     <>
-      <StructuredData data={organizationSchema} />
-      <StructuredData data={softwareSchema} />
+      {/* Schema.org микроразметка для SEO и LLM */}
+      <StructuredData data={[...schemas, faqSchema]} />
+      
       <Navbar />
       <main className="min-h-screen">
         <Hero />

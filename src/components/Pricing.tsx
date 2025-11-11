@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import PricingClient from './PricingClient'
+import StructuredData from './StructuredData'
+import { generateAllProductsSchema } from '@/lib/schema'
 
 export default async function Pricing() {
   const supabase = await createClient()
@@ -15,6 +17,16 @@ export default async function Pricing() {
     console.error('Error loading pricing plans:', error)
   }
 
-  // Передаем данные в клиентский компонент
-  return <PricingClient plans={plans || []} />
+  // Генерируем Schema.org разметку для всех планов
+  const productSchemas = plans ? generateAllProductsSchema(plans) : []
+
+  return (
+    <>
+      {/* Schema.org разметка для каждого плана подписки */}
+      {productSchemas.length > 0 && <StructuredData data={productSchemas} />}
+      
+      {/* Передаем данные в клиентский компонент */}
+      <PricingClient plans={plans || []} />
+    </>
+  )
 }
